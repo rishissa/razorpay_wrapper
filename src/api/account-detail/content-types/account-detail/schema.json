@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "account_details",
+  "info": {
+    "singularName": "account-detail",
+    "pluralName": "account-details",
+    "displayName": "Account Detail"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "upi_id": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "account_name": {
+      "type": "string"
+    },
+    "ifsc_code": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "account_detail"
+    }
+  }
+}

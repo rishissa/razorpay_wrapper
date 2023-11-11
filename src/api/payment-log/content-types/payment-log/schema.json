@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_logs",
+  "info": {
+    "singularName": "payment-log",
+    "pluralName": "payment-logs",
+    "displayName": "Payment Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "rz_order_creationId": {
+      "type": "string"
+    },
+    "rz_payment_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "float"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "AUTHORIZED",
+        "CAPTURED",
+        "FAILED"
+      ]
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "method": {
+      "type": "string"
+    },
+    "vpa": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "ifsc_code": {
+      "type": "string"
+    },
+    "card_network": {
+      "type": "string"
+    },
+    "card_id": {
+      "type": "string"
+    },
+    "card_number": {
+      "type": "string"
+    },
+    "card_type": {
+      "type": "string"
+    },
+    "bank": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "contact": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "payment_logs"
+    },
+    "settlement": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::settlement.settlement",
+      "inversedBy": "payment_logs"
+    }
+  }
+}

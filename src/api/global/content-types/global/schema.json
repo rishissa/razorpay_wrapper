@@ -1,0 +1,24 @@
+{
+  "kind": "singleType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "razorpay_key": {
+      "type": "string"
+    },
+    "razorpay_secret": {
+      "type": "string"
+    },
+    "razorpayX_account_number": {
+      "type": "string"
+    }
+  }
+}

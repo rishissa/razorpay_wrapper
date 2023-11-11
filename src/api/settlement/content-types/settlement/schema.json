@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "settlements",
+  "info": {
+    "singularName": "settlement",
+    "pluralName": "settlements",
+    "displayName": "Settlement",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "status": {
+      "type": "string"
+    },
+    "net_amount": {
+      "type": "decimal"
+    },
+    "payment_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-log.payment-log",
+      "mappedBy": "settlement"
+    },
+    "payout_log": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::payout-log.payout-log",
+      "inversedBy": "settlement"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "settlements"
+    }
+  }
+}
