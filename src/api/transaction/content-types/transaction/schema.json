@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "transactions",
+  "info": {
+    "singularName": "transaction",
+    "pluralName": "transactions",
+    "displayName": "Transaction"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "purpose": {
+      "type": "enumeration",
+      "enum": [
+        "PURCHASE",
+        "PAYOUT"
+      ]
+    },
+    "txn_type": {
+      "type": "enumeration",
+      "enum": [
+        "DEBIT",
+        "CREDIT"
+      ]
+    },
+    "txn_id": {
+      "type": "string"
+    },
+    "remark": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "WALLET",
+        "MONEY"
+      ]
+    },
+    "amount": {
+      "type": "decimal",
+      "default": 0
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payout_logs",
+  "info": {
+    "singularName": "payout-log",
+    "pluralName": "payout-logs",
+    "displayName": "Payout Log",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "payout_id": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "account_type": {
+      "type": "string"
+    },
+    "vpa_address": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "reference_id": {
+      "type": "string"
+    },
+    "fund_account_id": {
+      "type": "string"
+    },
+    "fund_account_contact_id": {
+      "type": "string"
+    },
+    "fund_bank_account_name": {
+      "type": "string"
+    },
+    "fund_bank_account_ifsc": {
+      "type": "string"
+    },
+    "fund_bank_account_number": {
+      "type": "string"
+    },
+    "fund_contact_name": {
+      "type": "string"
+    },
+    "fund_contact_email": {
+      "type": "string"
+    },
+    "fund_contact_contact": {
+      "type": "string"
+    },
+    "fund_contact_type": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "payout_logs"
+    },
+    "settlement": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::settlement.settlement",
+      "mappedBy": "payout_log"
+    }
+  }
+}
