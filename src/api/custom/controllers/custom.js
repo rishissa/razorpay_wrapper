@@ -3,6 +3,7 @@
 
 const axios = require("axios");
 const crypto = require("crypto");
+const { commission } = require("../../utils/helper");
 /**
  * A set of functions called "actions" for `custom`
  */
@@ -104,7 +105,7 @@ module.exports = {
         case "bank_account":
           payload = {
             account_number: razorpay_keys.razorpayX_account_number,
-            amount: totalAmount * 100,
+            amount: commission(totalAmount) * 100,
             currency: "INR",
             purpose: "payout",
             mode: "NEFT",
@@ -126,7 +127,7 @@ module.exports = {
         case "upi":
           payload = {
             account_number: razorpay_keys.razorpayX_account_number,
-            amount: totalAmount * 100,
+            amount: commission(totalAmount) * 100,
             currency: "INR",
             purpose: "payout",
             mode: "UPI",

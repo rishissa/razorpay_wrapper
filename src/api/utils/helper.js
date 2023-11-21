@@ -17,7 +17,14 @@ const getPagination = (page, pageSize) => {
   }
 };
 
+const addCommission = (amount) => {
+  const percentage = 2;
+  const totalAmount = amount + (amount * percentage) / 100;
+  return totalAmount;
+};
+
 module.exports = {
   generateOrderUid: uid,
   getPagination,
+  commission: addCommission,
 };
