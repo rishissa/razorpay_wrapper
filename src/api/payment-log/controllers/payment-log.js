@@ -21,9 +21,12 @@ module.exports = createCoreController(
 
         let client_filter;
         if (client === undefined) {
-          client_filter = null;
+          client_filter = { user: { id: { $not: null } } };
         } else {
-          client_filter = { user: { id: client }, status: "CAPTURED" };
+          client_filter = {
+            user: { id: client },
+            status: "CAPTURED",
+          };
           const user_data = await strapi
             .query("plugin::users-permissions.user")
             .findOne({ where: { id: client } });
@@ -42,7 +45,7 @@ module.exports = createCoreController(
             .findWithCount({
               where: client_filter,
               // @ts-ignore
-              populate: { settlement: true },
+              populate: { user: true },
               limit,
               offset,
               orderBy: { id: "desc" },

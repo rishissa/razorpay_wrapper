@@ -13,7 +13,7 @@ module.exports = (config, { strapi }) => {
     const body = ctx.request.body;
     const JoiSchema = Joi.object({
       mode: Joi.string().valid("bank_account", "upi"),
-      log_ids: Joi.array(),
+      payment_log_id: Joi.required(),
       user: Joi.required(),
     });
 

@@ -16,16 +16,21 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
     try {
       //get x-verify header value
       //check in db
+      console.log("Inside Initiate RZP Order");
       const headerID = ctx.request.headers["x-verify"];
       const data = ctx.request.body;
-      
+
+      console.log(data);
       if (!headerID) {
         return ctx.send({ message: "No VerifyID passed in the header" }, 400);
       }
       //search in db
       const user = await strapi
         .query("plugin::users-permissions.user")
-        .findOne({ where: { personal_id: headerID } });
+        .findOne({
+          where: { personal_id: headerID },
+          populate: { account_detail: true },
+        });
       if (!user) {
         return ctx.send({ message: "Invalid VerifyID passed" }, 400);
       }
@@ -38,7 +43,8 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       var razorpayInfo = await razorpayService.createOrder(
         razorpay_keys.razorpay_key,
         razorpay_keys.razorpay_secret,
-        data.totalAmount
+        data.totalAmount,
+        user.account_detail
       );
 
       if (razorpayInfo.status == "created") {
@@ -47,7 +53,9 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
           rz_order_creationId: razorpayInfo.id,
           amount: razorpayInfo.amount / 100,
           user: user.id,
-          order_id: "",
+          payout_required: data.payout_required,
+          payment_mode: data.payment_mode,
+          payout_amount: data.totalResellerMargin,
         };
 
         const create_log = await strapi.db
@@ -164,13 +172,43 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
 
         //update log
         data_to_update = webhook_data.payObject;
-        // console.log(data_to_update);
-        switch (data_to_update.status) {
-          case "CAPTURED":
-            if (log) {
-              console.log(log);
-              if (!log.method) {
-                console.log("Update Log");
+
+        if (data_to_update) {
+          switch (data_to_update.status) {
+            case "CAPTURED":
+              if (log) {
+                console.log(log);
+                if (!log.method) {
+                  console.log("Update Log");
+                  const update_log = await strapi.db
+                    .query("api::payment-log.payment-log")
+                    .update({
+                      where: {
+                        rz_order_creationId: data_to_update.rz_order_creationId,
+                      },
+                      data: data_to_update,
+                    });
+                } else if (log.status === "FAILED") {
+                  console.log("Create Log");
+                  const create_log = await strapi.db
+                    .query("api::payment-log.payment-log")
+                    .create({
+                      data: data_to_update,
+                    });
+                }
+              } else {
+                console.log("Create Log");
+                const create_log = await strapi.db
+                  .query("api::payment-log.payment-log")
+                  .create({
+                    data: data_to_update,
+                  });
+              }
+              break;
+
+            case "FAILED":
+              console.log("From Webhooks Failed");
+              if (log.status !== "FAILED") {
                 const update_log = await strapi.db
                   .query("api::payment-log.payment-log")
                   .update({
@@ -179,7 +217,10 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
                     },
                     data: data_to_update,
                   });
-              } else if (log.status === "FAILED") {
+                // if (!log.method) {
+                //   console.log("Update Log");
+                // }
+              } else {
                 console.log("Create Log");
                 const create_log = await strapi.db
                   .query("api::payment-log.payment-log")
@@ -187,43 +228,25 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
                     data: data_to_update,
                   });
               }
-            } else {
-              console.log("Create Log");
-              const create_log = await strapi.db
-                .query("api::payment-log.payment-log")
-                .create({
-                  data: data_to_update,
-                });
-            }
-            break;
+              break;
 
-          case "FAILED":
-            console.log("From Webhooks Failed");
-            if (log.status !== "FAILED") {
-              const update_log = await strapi.db
-                .query("api::payment-log.payment-log")
-                .update({
-                  where: {
-                    rz_order_creationId: data_to_update.rz_order_creationId,
-                  },
-                  data: data_to_update,
-                });
-              // if (!log.method) {
-              //   console.log("Update Log");
-              // }
-            } else {
-              console.log("Create Log");
-              const create_log = await strapi.db
-                .query("api::payment-log.payment-log")
-                .create({
-                  data: data_to_update,
-                });
-            }
-            break;
-
-          default:
-            break;
+            default:
+              break;
+          }
+        } else if (webhook_data.data.event === "settlement.processed") {
+          if (log) {
+            console.log(log);
+            const update_log = await strapi.db
+              .query("api::payment-log.payment-log")
+              .update({
+                where: {
+                  rz_order_creationId: data_to_update.rz_order_creationId,
+                },
+                data: { settled: true },
+              });
+          }
         }
+        // console.log(data_to_update);
 
         return ctx.send({ verified: true }, 200);
       }

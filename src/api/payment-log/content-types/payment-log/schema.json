@@ -4,7 +4,8 @@
   "info": {
     "singularName": "payment-log",
     "pluralName": "payment-logs",
-    "displayName": "Payment Log"
+    "displayName": "Payment Log",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -79,6 +80,29 @@
       "relation": "manyToOne",
       "target": "api::settlement.settlement",
       "inversedBy": "payment_logs"
+    },
+    "settled": {
+      "type": "boolean",
+      "default": false
+    },
+    "payment_mode": {
+      "type": "enumeration",
+      "enum": [
+        "COD",
+        "PREPAID"
+      ]
+    },
+    "payout_required": {
+      "type": "boolean"
+    },
+    "payout_amount": {
+      "type": "decimal"
+    },
+    "payout_log": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::payout-log.payout-log",
+      "inversedBy": "payment_log"
     }
   }
 }
