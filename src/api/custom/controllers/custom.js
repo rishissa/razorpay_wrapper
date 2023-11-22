@@ -11,6 +11,9 @@ module.exports = {
   createPayout: async (ctx, next) => {
     try {
       const body = ctx.request.body;
+      const payment_log_id = body.payment_log_id;
+
+      let order;
       const razorpay_keys = await strapi.db
         .query("api::global.global")
         // @ts-ignore
@@ -28,6 +31,49 @@ module.exports = {
           },
         });
 
+      const payment_log = await strapi.db
+        .query("api::payment-log.payment-log")
+        .findOne({
+          where: {
+            id: payment_log_id,
+            user: { id: body.user },
+          },
+          select: ["id", "amount", "payout_amount", "rz_order_creationId"],
+          populate: { user: { select: ["id"] } },
+        });
+      //check if order is reseller and COD order
+      //check if order products of order all are delivered
+      try {
+        order = await axios.get(
+          `https://276f-115-245-32-170.ngrok-free.app/api/orders?filters[rzpayOrderId][$eq]=${payment_log.rz_order_creationId}&populate[0]=order_products`
+        );
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+      if (
+        order.data.data[0].attributes.isResellerOrder === true &&
+        order.data.data[0].attributes.payment_mode === "COD"
+      ) {
+        for (const it of order.data.data[0].attributes.order_products.data) {
+          if (it.attributes.status !== "DELIVERED") {
+            return ctx.send(
+              {
+                message: `Order Product ID:${it.id} should be delivered in order to proceed`,
+              },
+              400
+            );
+          }
+        }
+      } else {
+        return ctx.send(
+          {
+            message:
+              "Order must be ResellerOrder and COD in order to proceed for Payout",
+          },
+          400
+        );
+      }
       // console.log(user);
       switch (body.mode) {
         case "upi":
@@ -63,37 +109,24 @@ module.exports = {
       }
 
       const mode = body.mode;
-      const payment_log_ids = body.log_ids;
 
       //find all logs
-      const payment_logs = await strapi.db
-        .query("api::payment-log.payment-log")
-        .findMany({
-          where: {
-            id: { $in: payment_log_ids },
-            user: { id: body.user },
-          },
-          select: ["id", "amount"],
-          populate: { user: { select: ["id"] } },
-        });
 
-      console.log(payment_logs);
-      const missingIds = payment_log_ids.filter(
-        (id) => !payment_logs.some((obj) => obj.id === id)
-      );
+      // console.log(payment_logs);
+      // const missingIds = payment_log_ids.filter(
+      //   (id) => !payment_logs.some((obj) => obj.id === id)
+      // );
 
-      if (missingIds.length > 0) {
-        return ctx.send(
-          {
-            message: `ID: ${missingIds} either not found or not associated to the user`,
-          },
-          400
-        );
-      }
+      // if (missingIds.length > 0) {
+      //   return ctx.send(
+      //     {
+      //       message: `ID: ${missingIds} either not found or not associated to the user`,
+      //     },
+      //     400
+      //   );
+      // }
       let totalAmount = 0;
-      for (const id of payment_logs) {
-        totalAmount += id.amount;
-      }
+      totalAmount += payment_log.payout_amount;
 
       // const base64 = btoa(`${username}:${password}`);
       let payload;
@@ -148,17 +181,23 @@ module.exports = {
           break;
       }
 
-      const payout = await axios.post(
-        `https://api.razorpay.com/v1/payouts`,
-        payload,
-        {
-          auth: {
-            username: username,
-            password: password,
-          },
-        }
-      );
-      console.log(JSON.stringify(payout.data));
+      let payout;
+      try {
+        payout = await axios.post(
+          `https://api.razorpay.com/v1/payouts`,
+          payload,
+          {
+            auth: {
+              username: username,
+              password: password,
+            },
+          }
+        );
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+      // console.log(JSON.stringify(payout.data));
 
       switch (mode) {
         case "bank_account":
@@ -166,7 +205,7 @@ module.exports = {
             payout_id: payout.data.id,
             account_number:
               payout.data.fund_account.bank_account.account_number,
-            amount: payout.data.amount,
+            amount: payout.data.amount / 100,
             currency: payout.data.currency,
             mode: payout.data.mode,
             purpose: payout.data.purpose,
@@ -181,13 +220,15 @@ module.exports = {
             fund_contact_type: payout.data.fund_account.contact.type,
             fund_bank_account_name:
               payout.data.fund_account.bank_account.bank_name,
+            user: user.id,
+            payment_log: body.payment_log_id,
           };
           break;
 
         case "upi":
           data = {
             payout_id: payout.data.id,
-            amount: payout.data.amount,
+            amount: payout.data.amount / 100,
             currency: payout.data.currency,
             mode: payout.data.mode,
             purpose: payout.data.purpose,
@@ -200,6 +241,8 @@ module.exports = {
             fund_contact_email: payout.data.fund_account.contact.email,
             fund_contact_contact: payout.data.fund_account.contact.contact,
             fund_contact_type: payout.data.fund_account.contact.type,
+            user: user.id,
+            payment_log: body.payment_log_id,
           };
           break;
 
@@ -213,17 +256,17 @@ module.exports = {
             data: data,
           });
 
-        const settlement = await strapi.db
-          .query("api::settlement.settlement")
-          .create({
-            data: {
-              payment_logs: body.log_ids,
-              payout_log: payoutLog.id,
-              user: user.id,
-              net_amount: totalAmount,
-              status: payout.data.status,
-            },
-          });
+        // const settlement = await strapi.db
+        //   .query("api::settlement.settlement")
+        //   .create({
+        //     data: {
+        //       payment_logs: body.log_ids,
+        //       payout_log: payoutLog.id,
+        //       user: user.id,
+        //       net_amount: totalAmount,
+        //       status: payout.data.status,
+        //     },
+        //   });
 
         return ctx.send(payout.data, 200);
       } else {

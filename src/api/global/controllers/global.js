@@ -53,6 +53,9 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
           rz_order_creationId: razorpayInfo.id,
           amount: razorpayInfo.amount / 100,
           user: user.id,
+          payout_required: data.payout_required,
+          payment_mode: data.payment_mode,
+          payout_amount: data.totalResellerMargin,
         };
 
         const create_log = await strapi.db

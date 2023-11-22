@@ -23,7 +23,10 @@ module.exports = createCoreController(
         if (client === undefined) {
           client_filter = { user: { id: { $not: null } } };
         } else {
-          client_filter = { user: { id: client }, status: "CAPTURED" };
+          client_filter = {
+            user: { id: client },
+            status: "CAPTURED",
+          };
           const user_data = await strapi
             .query("plugin::users-permissions.user")
             .findOne({ where: { id: client } });
