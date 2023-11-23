@@ -1,5 +1,6 @@
 "use strict";
 
+const { payment_purpose } = require("../../utils/constants");
 const { getPagination } = require("../../utils/helper");
 
 /**
@@ -19,14 +20,19 @@ module.exports = createCoreController(
 
         let client = query.client;
 
-        let client_filter;
-        if (client === undefined) {
-          client_filter = { user: { id: { $not: null } } };
+        let admin_sub = query.subscription;
+
+        let client_filter = {};
+        if (admin_sub == "true") {
+          client_filter["purpose"] = payment_purpose.subscription;
         } else {
-          client_filter = {
-            user: { id: client },
-            status: "CAPTURED",
-          };
+          client_filter["purpose"] = payment_purpose.order;
+        }
+        if (client === undefined) {
+          client_filter["user"] = { id: { $not: null } };
+        } else {
+          client_filter["user"] = { id: client };
+          client_filter["status"] = "CAPTURED";
           const user_data = await strapi
             .query("plugin::users-permissions.user")
             .findOne({ where: { id: client } });
@@ -45,7 +51,7 @@ module.exports = createCoreController(
             .findWithCount({
               where: client_filter,
               // @ts-ignore
-              populate: { user: true },
+              populate: { user: { populate: { account_detail: true } } },
               limit,
               offset,
               orderBy: { id: "desc" },

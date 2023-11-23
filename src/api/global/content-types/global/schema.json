@@ -4,7 +4,8 @@
   "info": {
     "singularName": "global",
     "pluralName": "globals",
-    "displayName": "Global"
+    "displayName": "Global",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -19,6 +20,9 @@
     },
     "razorpayX_account_number": {
       "type": "string"
+    },
+    "client_server_subscription_price": {
+      "type": "decimal"
     }
   }
 }

@@ -38,7 +38,6 @@ module.exports = {
             id: payment_log_id,
             user: { id: body.user },
           },
-          select: ["id", "amount", "payout_amount", "rz_order_creationId"],
           populate: { user: { select: ["id"] } },
         });
       //check if order is reseller and COD order
@@ -51,25 +50,10 @@ module.exports = {
         console.log(err);
         return ctx.send(err, 400);
       }
-      if (
-        order.data.data[0].attributes.isResellerOrder === true &&
-        order.data.data[0].attributes.payment_mode === "COD"
-      ) {
-        for (const it of order.data.data[0].attributes.order_products.data) {
-          if (it.attributes.status !== "DELIVERED") {
-            return ctx.send(
-              {
-                message: `Order Product ID:${it.id} should be delivered in order to proceed`,
-              },
-              400
-            );
-          }
-        }
-      } else {
+      if (payment_log.payout_required === false) {
         return ctx.send(
           {
-            message:
-              "Order must be ResellerOrder and COD in order to proceed for Payout",
+            message: `Payout is not required in this log`,
           },
           400
         );
@@ -278,7 +262,7 @@ module.exports = {
       return ctx.send(error, 500);
     }
   },
-
+  
   webHook: async (ctx) => {
     try {
       console.log("From Payout Webhook");

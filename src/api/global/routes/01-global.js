@@ -20,6 +20,24 @@ module.exports = {
     },
     {
       method: "POST",
+      path: "/client-subscription/razorpay",
+      handler: "global.initiateSubscription",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: "POST",
+      path: "/client-subscription/razorpay/verify",
+      handler: "global.verifySubscription",
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: "POST",
       path: "/razorpay/webhooks",
       handler: "global.razorpay_webhooks",
       config: {
