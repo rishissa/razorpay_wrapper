@@ -31,8 +31,16 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
           where: { personal_id: headerID },
           populate: { account_detail: true },
         });
+
+      console.log(user);
       if (!user) {
         return ctx.send({ message: "Invalid VerifyID passed" }, 400);
+      }
+      if (!user.account_detail.rzp_linked_account_id) {
+        return ctx.send(
+          { message: "No Linked Account found for the Seller" },
+          400
+        );
       }
 
       const razorpay_keys = await strapi.db

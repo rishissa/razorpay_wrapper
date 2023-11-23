@@ -43,33 +43,10 @@ module.exports = {
         });
       //check if order is reseller and COD order
       //check if order products of order all are delivered
-      try {
-        order = await axios.get(
-          `https://276f-115-245-32-170.ngrok-free.app/api/orders?filters[rzpayOrderId][$eq]=${payment_log.rz_order_creationId}&populate[0]=order_products`
-        );
-      } catch (err) {
-        console.log(err);
-        return ctx.send(err, 400);
-      }
-      if (
-        order.data.data[0].attributes.isResellerOrder === true &&
-        order.data.data[0].attributes.payment_mode === "COD"
-      ) {
-        for (const it of order.data.data[0].attributes.order_products.data) {
-          if (it.attributes.status !== "DELIVERED") {
-            return ctx.send(
-              {
-                message: `Order Product ID:${it.id} should be delivered in order to proceed`,
-              },
-              400
-            );
-          }
-        }
-      } else {
+      if (payment_log.payout_required === false) {
         return ctx.send(
           {
-            message:
-              "Order must be ResellerOrder and COD in order to proceed for Payout",
+            message: `Payout is not required in this log`,
           },
           400
         );

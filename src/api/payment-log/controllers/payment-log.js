@@ -45,7 +45,7 @@ module.exports = createCoreController(
             .findWithCount({
               where: client_filter,
               // @ts-ignore
-              populate: { user: true },
+              populate: { user: { populate: { account_detail: true } } },
               limit,
               offset,
               orderBy: { id: "desc" },

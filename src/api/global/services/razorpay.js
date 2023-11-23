@@ -3,6 +3,7 @@ const axios = require("axios");
 
 const razorpayService = {
   createOrder: async (key_id, key_secret, totalAmount, account_id) => {
+    console.log(key_id, key_secret, totalAmount, account_id);
     var instance = new Razorpay({
       key_id: key_id,
       key_secret: key_secret,
