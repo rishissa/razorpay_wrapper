@@ -17,8 +17,13 @@ const getPagination = (page, pageSize) => {
   }
 };
 
+const addGSTToAmount = (gst, amount) => {
+  const totalAmount = amount + (amount * gst) / 100;
+  return totalAmount;
+};
+
 module.exports = {
   generateOrderUid: uid,
   getPagination,
+  calculateTotalAmount: addGSTToAmount,
 };
-

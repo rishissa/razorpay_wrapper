@@ -41,6 +41,24 @@ const razorpayService = {
       return err.error;
     }
   },
+
+  createSubscription: async (key_id, key_secret, totalAmount) => {
+    var instance = new Razorpay({
+      key_id: key_id,
+      key_secret: key_secret,
+    });
+
+    try {
+      var razorpayInfo = await instance.orders.create({
+        amount: parseInt(totalAmount) * 100,
+        currency: "INR",
+      });
+      return razorpayInfo;
+    } catch (err) {
+      console.log(err.error);
+      return err.error;
+    }
+  },
 };
 
 module.exports = razorpayService;

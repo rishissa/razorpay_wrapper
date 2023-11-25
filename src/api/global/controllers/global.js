@@ -1,7 +1,10 @@
 "use strict";
 
 const { payment_purpose } = require("../../utils/constants");
-const { generateOrderUid } = require("../../utils/helper");
+const {
+  generateOrderUid,
+  calculateTotalAmount,
+} = require("../../utils/helper");
 const razorpayService = require("../services/razorpay");
 const crypto = require("crypto");
 const Razorpay = require("razorpay");
@@ -260,12 +263,16 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
     try {
       console.log("Inside Initiate Subscription RazpWrapper");
       const headerID = ctx.request.headers["x-verify"];
-      const data = ctx.request.body;
 
       // console.log(data);
       if (!headerID) {
         return ctx.send({ message: "No VerifyID passed in the header" }, 400);
       }
+
+      const global_data = await strapi.db
+        .query("api::global.global")
+        // @ts-ignore
+        .findOne();
 
       const user = await strapi
         .query("plugin::users-permissions.user")
@@ -276,14 +283,16 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       if (!user) {
         return ctx.send({ message: "Invalid VerifyID passed" }, 400);
       }
-      const razorpay_keys = await strapi.db
-        .query("api::global.global")
-        // @ts-ignore
-        .findOne();
+
+      let totalAmount = calculateTotalAmount(
+        18,
+        global_data.client_server_subscription_price || 1000
+      );
+
       var razorpayInfo = await razorpayService.createSubscription(
-        razorpay_keys.razorpay_key,
-        razorpay_keys.razorpay_secret,
-        data.totalAmount
+        global_data.razorpay_key,
+        global_data.razorpay_secret,
+        totalAmount
       );
 
       if (razorpayInfo.status == "created") {
