@@ -103,6 +103,13 @@
       "relation": "oneToOne",
       "target": "api::payout-log.payout-log",
       "inversedBy": "payment_log"
+    },
+    "purpose": {
+      "type": "enumeration",
+      "enum": [
+        "ORDER",
+        "SUBSCRIPTION"
+      ]
     }
   }
 }

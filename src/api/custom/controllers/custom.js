@@ -38,7 +38,6 @@ module.exports = {
             id: payment_log_id,
             user: { id: body.user },
           },
-          select: ["id", "amount", "payout_amount", "rz_order_creationId"],
           populate: { user: { select: ["id"] } },
         });
       //check if order is reseller and COD order

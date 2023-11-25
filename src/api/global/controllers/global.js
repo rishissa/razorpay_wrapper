@@ -1,5 +1,6 @@
 "use strict";
 
+const { payment_purpose } = require("../../utils/constants");
 const { generateOrderUid } = require("../../utils/helper");
 const razorpayService = require("../services/razorpay");
 const crypto = require("crypto");
@@ -64,6 +65,7 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
           payout_required: data.payout_required,
           payment_mode: data.payment_mode,
           payout_amount: data.totalResellerMargin,
+          purpose: payment_purpose.order,
         };
 
         const create_log = await strapi.db
@@ -260,6 +262,118 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       }
       return ctx.send({ verified: false }, 200);
     } catch (err) {}
+  },
+
+  initiateSubscription: async (ctx, next) => {
+    try {
+      console.log("Inside Initiate Subscription RazpWrapper");
+      const headerID = ctx.request.headers["x-verify"];
+      const data = ctx.request.body;
+
+      // console.log(data);
+      if (!headerID) {
+        return ctx.send({ message: "No VerifyID passed in the header" }, 400);
+      }
+
+      const user = await strapi
+        .query("plugin::users-permissions.user")
+        .findOne({
+          where: { personal_id: headerID },
+          populate: { account_detail: true },
+        });
+      if (!user) {
+        return ctx.send({ message: "Invalid VerifyID passed" }, 400);
+      }
+      const razorpay_keys = await strapi.db
+        .query("api::global.global")
+        // @ts-ignore
+        .findOne();
+      var razorpayInfo = await razorpayService.createSubscription(
+        razorpay_keys.razorpay_key,
+        razorpay_keys.razorpay_secret,
+        data.totalAmount
+      );
+
+      if (razorpayInfo.status == "created") {
+        //set entry in payment logs
+        const payment_log_data = {
+          rz_order_creationId: razorpayInfo.id,
+          amount: razorpayInfo.amount / 100,
+          user: user.id,
+          purpose: payment_purpose.subscription,
+        };
+
+        const create_log = await strapi.db
+          .query("api::payment-log.payment-log")
+          .create({ data: payment_log_data });
+        return ctx.send(razorpayInfo, 200);
+      }
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
+  },
+
+  verifySubscription: async (ctx, next) => {
+    try {
+      console.log("Inside Verify Subscription From RzpWrapper");
+      const razorpay_order_id = ctx.request.headers["razorpay_order_id"];
+      const razorpay_payment_id = ctx.request.headers["razorpay_payment_id"];
+      const razorpay_signature = ctx.request.headers["razorpay_signature"];
+
+      const razorpay_keys = await strapi.db
+        .query("api::global.global")
+        // @ts-ignore
+        .findOne();
+      var generated_signature = crypto
+        .createHmac("sha256", razorpay_keys.razorpay_secret)
+        .update(razorpay_order_id + "|" + razorpay_payment_id)
+        .digest("hex");
+      if (generated_signature === razorpay_signature) {
+        var instance = new Razorpay({
+          key_id: razorpay_keys.razorpay_key,
+          key_secret: razorpay_keys.razorpay_secret,
+        });
+
+        const rzOrder = await instance.orders.fetch(razorpay_order_id);
+        let payment_log_data = {
+          rz_payment_id: razorpay_payment_id,
+          status: "CAPTURED",
+        };
+
+        const log = await strapi.db
+          .query("api::payment-log.payment-log")
+          .findOne({
+            where: {
+              rz_order_creationId: razorpay_order_id,
+            },
+          });
+        if (log) {
+          if (!log.method) {
+            console.log(log);
+            const update_log = await strapi.db
+              .query("api::payment-log.payment-log")
+              .update({
+                where: { rz_order_creationId: razorpay_order_id },
+                data: payment_log_data,
+              });
+          }
+        } else {
+          //create
+          const create_log = await strapi.db
+            .query("api::payment-log.payment-log")
+            .create({
+              data: payment_log_data,
+            });
+        }
+        return ctx.send(rzOrder, 200);
+      }
+      console.log("Unable to verify Payment");
+      return ctx.send({ message: "Unable to Verify Payment" }, 400);
+    } catch (err) {
+      console.log(err);
+      return ctx.send(err, 400);
+    }
   },
 
   paymentLogsByRzpOrderId: async (ctx, next) => {
