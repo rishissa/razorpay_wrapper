@@ -24,7 +24,7 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       const headerID = ctx.request.headers["x-verify"];
       const data = ctx.request.body;
 
-      console.log(data);
+      // console.log(data);
       if (!headerID) {
         return ctx.send({ message: "No VerifyID passed in the header" }, 400);
       }
@@ -53,8 +53,12 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
         .findOne();
 
       var razorpayInfo = await razorpayService.createOrder(
-        razorpay_keys.razorpay_key,
-        razorpay_keys.razorpay_secret,
+        data.razorpay_env === "PROD"
+          ? razorpay_keys.razorpay_key
+          : razorpay_keys.razorpay_test_key,
+        data.razorpay_env === "PROD"
+          ? razorpay_keys.razorpay_secret
+          : razorpay_keys.razorpay_test_secret,
         data.totalAmount,
         user.account_detail
       );
@@ -69,6 +73,7 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
           payment_mode: data.payment_mode,
           payout_amount: data.totalResellerMargin,
           purpose: payment_purpose.order,
+          environment: data.razorpay_env == "PROD" ? "LIVE" : "TEST",
         };
 
         const create_log = await strapi.db
@@ -85,11 +90,15 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
   verifyOrder: async (ctx, next) => {
     try {
       console.log("Inside Verify Order From RzpWrapper");
-      const razorpay_order_id = ctx.request.headers["razorpay_order_id"];
-      const razorpay_payment_id = ctx.request.headers["razorpay_payment_id"];
-      const razorpay_signature = ctx.request.headers["razorpay_signature"];
+      const razorpay_order_id = ctx.request.body.razorpay_order_id;
+      const razorpay_payment_id = ctx.request.body.razorpay_payment_id;
+      const razorpay_signature = ctx.request.body.razorpay_signature;
+      console.log(razorpay_order_id);
+      console.log(razorpay_order_id);
 
       const order_id = ctx.request.body.order_id;
+      const razorpay_env = ctx.request.body.razorpay_env;
+
       const razorpay_keys = await strapi.db
         .query("api::global.global")
         // @ts-ignore
@@ -99,52 +108,58 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
         .createHmac("sha256", razorpay_keys.razorpay_secret)
         .update(razorpay_order_id + "|" + razorpay_payment_id)
         .digest("hex");
-      if (generated_signature === razorpay_signature) {
-        var instance = new Razorpay({
-          key_id: razorpay_keys.razorpay_key,
-          key_secret: razorpay_keys.razorpay_secret,
+      var instance = new Razorpay({
+        key_id:
+          razorpay_env === "PROD"
+            ? razorpay_keys.razorpay_key
+            : razorpay_keys.razorpay_test_key,
+        key_secret:
+          razorpay_env === "PROD"
+            ? razorpay_keys.razorpay_secret
+            : razorpay_keys.razorpay_test_secret,
+      });
+
+      const rzOrder = await instance.orders.fetch(razorpay_order_id);
+
+      let payment_log_data = {
+        rz_payment_id: razorpay_payment_id,
+        order_id: order_id,
+        status: "CAPTURED",
+      };
+
+      //find log
+      const log = await strapi.db
+        .query("api::payment-log.payment-log")
+        .findOne({
+          where: {
+            rz_order_creationId: razorpay_order_id,
+          },
         });
 
-        const rzOrder = await instance.orders.fetch(razorpay_order_id);
-
-        let payment_log_data = {
-          rz_payment_id: razorpay_payment_id,
-          order_id: order_id,
-          status: "CAPTURED",
-        };
-
-        //find log
-        const log = await strapi.db
-          .query("api::payment-log.payment-log")
-          .findOne({
-            where: {
-              rz_order_creationId: razorpay_order_id,
-            },
-          });
-
-        console.log("Log From Verify order");
-        if (log) {
-          if (!log.method) {
-            console.log(log);
-            const update_log = await strapi.db
-              .query("api::payment-log.payment-log")
-              .update({
-                where: { rz_order_creationId: razorpay_order_id },
-                data: payment_log_data,
-              });
-          }
-        } else {
-          //create
-          const create_log = await strapi.db
+      console.log("Log From Verify order");
+      if (log) {
+        if (!log.method) {
+          console.log(log);
+          const update_log = await strapi.db
             .query("api::payment-log.payment-log")
-            .create({
+            .update({
+              where: { rz_order_creationId: razorpay_order_id },
               data: payment_log_data,
             });
         }
-        return ctx.send(rzOrder, 200);
+      } else {
+        //create
+        const create_log = await strapi.db
+          .query("api::payment-log.payment-log")
+          .create({
+            data: payment_log_data,
+          });
       }
-      console.log("Unable to verify Payment");
-      return ctx.send({ message: "Unable to Verify Payment" }, 400);
+      return ctx.send(rzOrder, 200);
+      // if (generated_signature === razorpay_signature) {
+      // }
+      // console.log("Unable to verify Payment");
+      // return ctx.send({ message: "Unable to Verify Payment" }, 400);
     } catch (err) {
       console.log(err);
       return ctx.send(err, 400);
@@ -185,10 +200,12 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
 
         //update log
         data_to_update = webhook_data.payObject;
+        console.log(data_to_update);
 
         if (data_to_update) {
           switch (data_to_update.status) {
             case "CAPTURED":
+              console.log("CAPTURED FROM RAZORPAY WRAPPER");
               if (log) {
                 console.log(log);
                 if (!log.method) {
@@ -271,8 +288,9 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
     try {
       console.log("Inside Initiate Subscription RazpWrapper");
       const headerID = ctx.request.headers["x-verify"];
+      const razorpay_env = ctx.request.body.razorpay_env;
 
-      // console.log(data);
+      console.log(razorpay_env);
       if (!headerID) {
         return ctx.send({ message: "No VerifyID passed in the header" }, 400);
       }
@@ -298,8 +316,12 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       );
 
       var razorpayInfo = await razorpayService.createSubscription(
-        global_data.razorpay_key,
-        global_data.razorpay_secret,
+        razorpay_env === "PROD"
+          ? global_data.razorpay_key
+          : global_data.razorpay_test_key,
+        razorpay_env === "PROD"
+          ? global_data.razorpay_secret
+          : global_data.razorpay_test_secret,
         totalAmount
       );
 
@@ -334,14 +356,26 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
         .query("api::global.global")
         // @ts-ignore
         .findOne();
+      let razorpay_secret =
+        ctx.request.body.razorpay_env === "DEV"
+          ? razorpay_keys.razorpay_test_secret
+          : razorpay_keys.razorpay_secret;
+      let razorpay_key =
+        ctx.request.body.razorpay_env === "DEV"
+          ? razorpay_keys.razorpay_test_key
+          : razorpay_keys.razorpay_key;
       var generated_signature = crypto
-        .createHmac("sha256", razorpay_keys.razorpay_secret)
+        .createHmac("sha256", razorpay_secret)
         .update(razorpay_order_id + "|" + razorpay_payment_id)
         .digest("hex");
+      console.log(generated_signature);
+      console.log(razorpay_signature);
+      console.log(razorpay_key);
+      console.log(razorpay_secret);
       if (generated_signature === razorpay_signature) {
         var instance = new Razorpay({
-          key_id: razorpay_keys.razorpay_key,
-          key_secret: razorpay_keys.razorpay_secret,
+          key_id: razorpay_key,
+          key_secret: razorpay_secret,
         });
 
         const rzOrder = await instance.orders.fetch(razorpay_order_id);
@@ -380,7 +414,7 @@ module.exports = createCoreController("api::global.global", ({ strapi }) => ({
       console.log("Unable to verify Payment");
       return ctx.send({ message: "Unable to Verify Payment" }, 400);
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       return ctx.send(err, 400);
     }
   },

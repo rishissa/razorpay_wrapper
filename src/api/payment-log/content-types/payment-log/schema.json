@@ -110,6 +110,16 @@
         "ORDER",
         "SUBSCRIPTION"
       ]
+    },
+    "account_id": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "enumeration",
+      "enum": [
+        "TEST",
+        "LIVE"
+      ]
     }
   }
 }

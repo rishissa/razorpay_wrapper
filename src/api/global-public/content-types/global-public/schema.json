@@ -1,0 +1,35 @@
+{
+  "kind": "singleType",
+  "collectionName": "global_publics",
+  "info": {
+    "singularName": "global-public",
+    "pluralName": "global-publics",
+    "displayName": "Global Public",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "white_logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "dark_logo": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "brandName": {
+      "type": "string"
+    }
+  }
+}

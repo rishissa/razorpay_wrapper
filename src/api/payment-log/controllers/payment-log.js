@@ -20,14 +20,18 @@ module.exports = createCoreController(
 
         let client = query.client;
 
-        let admin_sub = query.subscription;
+        let purpose = query.purpose;
 
         let client_filter = {};
-        if (admin_sub == "true") {
-          client_filter["purpose"] = payment_purpose.subscription;
-        } else {
-          client_filter["purpose"] = payment_purpose.order;
+
+        if (purpose) {
+          if (purpose === "subscription") {
+            client_filter["purpose"] = payment_purpose.subscription;
+          } else {
+            client_filter["purpose"] = payment_purpose.order;
+          }
         }
+
         if (client === undefined) {
           client_filter["user"] = { id: { $not: null } };
         } else {
@@ -95,6 +99,23 @@ module.exports = createCoreController(
         }
 
         return ctx.send({ data: allLogs[0], meta }, 200);
+      } catch (err) {
+        console.log(err);
+        return ctx.send(err, 400);
+      }
+    },
+
+    getClientTransactions: async (ctx, next) => {
+      try {
+        const id = ctx.request.params.id;
+        const txns = await strapi
+          .query("plugin::users-permissions.user")
+          .findOne({
+            where: { id: id },
+            populate: { payment_logs: true },
+          });
+
+        return ctx.send(txns, 200);
       } catch (err) {
         console.log(err);
         return ctx.send(err, 400);

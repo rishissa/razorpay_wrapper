@@ -23,6 +23,15 @@
     },
     "client_server_subscription_price": {
       "type": "decimal"
+    },
+    "razorpay_test_key": {
+      "type": "string"
+    },
+    "razorpay_test_secret": {
+      "type": "string"
+    },
+    "razorpayX_test_account_number": {
+      "type": "string"
     }
   }
 }
